@@ -7,7 +7,7 @@ import numpy as np
 
 from detector import build_detector
 from deep_sort import build_tracker
-from utils.draw import draw_boxes
+from utils.draw import draw_boxes, draw_center
 from utils.parser import get_config
 
 
@@ -16,8 +16,9 @@ class VideoTracker(object):
         self.cfg = cfg
         self.args = args
         use_cuda = args.use_cuda and torch.cuda.is_available()
-        if not use_cuda:
-            raise UserWarning("Running in cpu mode!")
+        print('-------- use_cuda: {}'.format(use_cuda))
+        # if not use_cuda:
+        #     raise UserWarning("Running in cpu mode!")
 
         if args.display:
             cv2.namedWindow("test", cv2.WINDOW_NORMAL)
@@ -50,6 +51,8 @@ class VideoTracker(object):
 
     def run(self):
         idx_frame = 0
+        prev_center_points = []
+        prev_identities = []
         while self.vdo.grab(): 
             idx_frame += 1
             if idx_frame % self.args.frame_interval:
@@ -75,8 +78,17 @@ class VideoTracker(object):
                 # draw boxes for visualization
                 if len(outputs) > 0:
                     bbox_xyxy = outputs[:,:4]
-                    identities = outputs[:,-1]
+                    identities = outputs[:,4]
                     ori_im = draw_boxes(ori_im, bbox_xyxy, identities)
+
+                    ##################################################
+                    # draw center point
+                    ##################################################
+                    cur_center_points = outputs[:, 5:]
+
+                    ori_im = draw_center(ori_im, cur_center_points, prev_center_points, identities, prev_identities)
+                    prev_center_points = cur_center_points
+                    prev_identities = identities
 
             end = time.time()
             print("time: {:.03f}s, fps: {:.03f}".format(end-start, 1/(end-start)))
@@ -91,7 +103,7 @@ class VideoTracker(object):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("VIDEO_PATH", type=str)
+    parser.add_argument("--VIDEO_PATH", type=str, default="./data/MOT16-03.mp4")
     parser.add_argument("--config_detection", type=str, default="./configs/yolov3.yaml")
     parser.add_argument("--config_deepsort", type=str, default="./configs/deep_sort.yaml")
     parser.add_argument("--ignore_display", dest="display", action="store_false", default=True)
@@ -99,7 +111,7 @@ def parse_args():
     parser.add_argument("--display_width", type=int, default=800)
     parser.add_argument("--display_height", type=int, default=600)
     parser.add_argument("--save_path", type=str, default="./demo/demo.avi")
-    parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
+    parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=False)
     return parser.parse_args()
 
 

@@ -48,7 +48,14 @@ class DeepSort(object):
             box = track.to_tlwh()
             x1,y1,x2,y2 = self._tlwh_to_xyxy(box)
             track_id = track.track_id
-            outputs.append(np.array([x1,y1,x2,y2,track_id], dtype=np.int))
+
+            #####################################
+            # adding center point
+            #####################################
+            center_x = int(np.mean([x1, x2]))
+            center_y = int(np.mean([y1, y2]))
+
+            outputs.append(np.array([x1,y1,x2,y2,track_id, center_x, center_y], dtype=np.int))
         if len(outputs) > 0:
             outputs = np.stack(outputs,axis=0)
         return outputs
